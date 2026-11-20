@@ -1,151 +1,156 @@
+import random
+
 import streamlit as st
-import pandas as pd
-import math
-from pathlib import Path
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+st.set_page_config(page_title="여행가방 무게 맞추기", page_icon="🧳")
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+ITEMS = {
+    "book": {"name": "책", "weight": 4},
+    "shirt": {"name": "티셔츠", "weight": 3},
+    "pants": {"name": "바지", "weight": 5},
+    "shoes": {"name": "운동화", "weight": 8},
+    "towel": {"name": "수건", "weight": 2},
+    "bottle": {"name": "물병", "weight": 6},
+    "camera": {"name": "카메라", "weight": 7},
+    "snack": {"name": "간식", "weight": 2},
+    "hat": {"name": "모자", "weight": 1},
+    "charger": {"name": "충전기", "weight": 2},
+    "umbrella": {"name": "우산", "weight": 4},
+}
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
-
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
+CHALLENGES = [
+    {"target": 12, "items": ["book", "shirt", "pants"]},
+    {"target": 15, "items": ["shoes", "book", "towel", "hat"]},
+    {"target": 18, "items": ["camera", "pants", "umbrella", "snack"]},
+    {"target": 22, "items": ["shoes", "bottle", "book", "snack", "charger"]},
 ]
 
-st.header('GDP over time', divider='gray')
 
-''
+def format_weight(weight):
+    return f"{weight // 10}.{weight % 10} kg"
 
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+
+if "bag_items" not in st.session_state:
+    st.session_state.bag_items = []
+if "challenge_index" not in st.session_state:
+    st.session_state.challenge_index = 0
+if "target_mode" not in st.session_state:
+    st.session_state.target_mode = "문제 풀기"
+
+st.title("🧳 여행가방 무게 맞추기")
+st.write("여행 물건의 무게를 더하고 빼서 목표 무게에 맞춰 보세요!")
+
+st.radio(
+    "목표 무게 정하기",
+    ["문제 풀기", "직접 목표 정하기"],
+    horizontal=True,
+    key="target_mode",
 )
 
-''
-''
+if st.session_state.target_mode == "문제 풀기":
+    challenge = CHALLENGES[st.session_state.challenge_index]
+    target_weight = challenge["target"]
+    st.info(f"**도전 문제:** 가방 무게를 **{format_weight(target_weight)}**에 맞춰 보세요.")
+    if st.button("새 문제"):
+        st.session_state.challenge_index = random.randrange(len(CHALLENGES))
+        st.session_state.bag_items = []
+        st.rerun()
+else:
+    target_kg = st.number_input(
+        "목표 무게 (kg)",
+        min_value=0.0,
+        max_value=10.0,
+        value=1.5,
+        step=0.1,
+        format="%.1f",
+    )
+    target_weight = round(target_kg * 10)
 
+st.divider()
+st.subheader("여행 물건 고르기")
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
+add_column, remove_column = st.columns(2)
+item_ids = list(ITEMS)
 
-st.header(f'GDP in {to_year}', divider='gray')
+with add_column:
+    st.markdown("**가방에 넣기**")
+    item_to_add = st.selectbox(
+        "넣을 물건",
+        item_ids,
+        format_func=lambda item_id: (
+            f"{ITEMS[item_id]['name']} · {format_weight(ITEMS[item_id]['weight'])}"
+        ),
+        label_visibility="collapsed",
+        key="item_to_add",
+    )
+    if st.button("가방에 넣기", use_container_width=True):
+        st.session_state.bag_items.append(item_to_add)
 
-''
+with remove_column:
+    st.markdown("**가방에서 빼기**")
+    if st.session_state.bag_items:
+        item_to_remove = st.selectbox(
+            "뺄 물건",
+            range(len(st.session_state.bag_items)),
+            format_func=lambda index: (
+                f"{ITEMS[st.session_state.bag_items[index]]['name']} "
+                f"· {format_weight(ITEMS[st.session_state.bag_items[index]]['weight'])}"
+            ),
+            label_visibility="collapsed",
+            key="item_to_remove",
+        )
+        if st.button("가방에서 빼기", use_container_width=True):
+            st.session_state.bag_items.pop(item_to_remove)
+            st.rerun()
+    else:
+        st.caption("가방이 비어 있어요.")
 
-cols = st.columns(4)
+if st.button("가방 비우기"):
+    st.session_state.bag_items = []
+    st.rerun()
 
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
+st.divider()
+st.subheader("내 여행가방")
 
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
+if st.session_state.bag_items:
+    for item_id in st.session_state.bag_items:
+        item = ITEMS[item_id]
+        st.write(f"- {item['name']} — {format_weight(item['weight'])}")
+else:
+    st.write("아직 가방에 물건이 없어요. 물건을 넣어 보세요.")
 
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+current_weight = sum(ITEMS[item_id]["weight"] for item_id in st.session_state.bag_items)
+difference = target_weight - current_weight
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
+weight_column, target_column, difference_column = st.columns(3)
+weight_column.metric("현재 가방 무게", format_weight(current_weight))
+target_column.metric("목표 무게", format_weight(target_weight))
+if difference > 0:
+    difference_label, difference_value = "남은 무게", format_weight(difference)
+elif difference < 0:
+    difference_label, difference_value = "초과한 무게", format_weight(-difference)
+else:
+    difference_label, difference_value = "목표와의 차이", "0.0 kg"
+difference_column.metric(difference_label, difference_value)
+st.progress(
+    min(current_weight / target_weight, 1.0) if target_weight else int(current_weight == 0)
+)
+
+if difference == 0:
+    st.success("정확히 맞췄어요! 소수의 덧셈과 뺄셈을 잘했어요!")
+elif difference > 0:
+    st.info(f"목표까지 **{format_weight(difference)}** 더 필요해요. 물건을 더 넣어 보세요.")
+else:
+    st.warning(f"목표보다 **{format_weight(-difference)}** 무거워요. 물건을 빼 보세요.")
+
+if st.session_state.target_mode == "문제 풀기":
+    with st.expander("정답 조합 보기"):
+        answer_items = challenge["items"]
+        answer_names = [ITEMS[item_id]["name"] for item_id in answer_items]
+        st.write(" + ".join(answer_names))
+        st.write(
+            "무게를 더하면 "
+            + " + ".join(format_weight(ITEMS[item_id]["weight"]) for item_id in answer_items)
+            + f" = **{format_weight(sum(ITEMS[item_id]['weight'] for item_id in answer_items))}**"
         )

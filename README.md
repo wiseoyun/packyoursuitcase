@@ -1,19 +1,24 @@
-# :earth_americas: GDP dashboard template
+# 🧳 여행가방 무게 맞추기
 
-A simple Streamlit app showing the GDP of different countries in the world.
+초등학교 4~5학년을 위한 소수의 덧셈과 뺄셈 연습 앱입니다. 여행 물건을 가방에 넣거나 빼면서 목표 무게에 맞춰 보세요.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://gdp-dashboard-template.streamlit.app/)
+## 주요 기능
 
-### How to run it on your own machine
+- 문제에서 목표 무게를 고르거나 직접 목표 무게를 설정할 수 있습니다.
+- 물건을 가방에 추가하고, 선택한 물건을 빼거나 가방을 비울 수 있습니다.
+- 현재 무게, 목표 무게, 남은 무게 또는 초과한 무게를 확인할 수 있습니다.
+- 문제 모드에서는 정답 조합과 무게 계산을 확인할 수 있습니다.
 
-1. Install the requirements
+## 실행 방법
 
+1. 필요한 패키지를 설치합니다.
+
+   ```sh
+   python -m pip install -r requirements.txt
    ```
-   $ pip install -r requirements.txt
-   ```
 
-2. Run the app
+2. 앱을 실행합니다.
 
-   ```
-   $ streamlit run streamlit_app.py
+   ```sh
+   python -m streamlit run streamlit_app.py
    ```
